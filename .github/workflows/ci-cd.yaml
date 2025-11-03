@@ -8,20 +8,18 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE: ${{ secrets.DOCKER_USERNAME }}/next-japan
   NODE_VERSION: 20
 
 jobs:
-  # Job 1: Build and Test (5 points each)
   build-and-test:
     name: 🔨 Build & Test
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: 🟢 Set up Node.js ${{ env.NODE_VERSION }}
+      - name: 🟢 Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -34,22 +32,24 @@ jobs:
         run: npm run lint
 
       - name: 🏗️ Build Next.js application
-        run: npm run build
+        run: |
+          npm run build
+          ls -la .next  # Verify build output exists
 
-      - name: 📤 Upload build artifacts
+      - name: 📤 Upload build artifacts (if exists)
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: build-files
           path: .next/
           retention-days: 1
 
-  # Job 2: Docker Build and Push (5 points each)
   docker-build-push:
     name: 🐳 Docker Build & Push
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-    
+
     steps:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
@@ -68,4 +68,6 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ env.DOCKER_IMAGE }}:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/next-japan:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
