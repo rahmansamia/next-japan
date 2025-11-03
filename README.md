@@ -1,142 +1,180 @@
-# Next Japan
+# DevOps Assignment — CI/CD + Kubernetes Deployment (Next.js Project)
 
-A modern web application built with [Next.js](https://nextjs.org/) (App Router), React 19, and Tailwind CSS 4, designed for robust, scalable, and maintainable deployments. This README is tailored for DevOps engineers responsible for CI/CD, infrastructure, and operational excellence.
-
----
-
-## Table of Contents
-
-- [Project Overview](#project-overview)
-- [Tech Stack](#tech-stack)
-- [Directory Structure](#directory-structure)
-- [Local Development](#local-development)
-- [Build & Production](#build--production)
-- [Linting & Code Quality](#linting--code-quality)
-- [Environment Variables](#environment-variables)
-- [Deployment Notes](#deployment-notes)
-- [CI/CD Recommendations](#cicd-recommendations)
-- [Troubleshooting](#troubleshooting)
+This repository contains the solution for the Module 7 DevOps assignment: building a Next.js application, setting up a CI/CD pipeline, deploying it to a Kubernetes cluster on AWS EC2, and exposing it publicly.
 
 ---
 
-## Project Overview
+## 🔗 Project Repository
 
-This project is a Next.js 15+ application using the App Router, React 19, and Tailwind CSS 4. It features modular UI components, dynamic routing, and a modern developer experience. The codebase is structured for scalability and maintainability.
+[Next.js Project Repository](https://github.com/mdarifahammedreza/next-japan.git)
 
-## Tech Stack
+Docker Image: `samiarahmanliza/next-japan:latest`
 
-- **Framework:** Next.js 15.3.5 (App Router)
-- **Language:** JavaScript (ES2022+)
-- **UI:** React 19, Tailwind CSS 4, DaisyUI
-- **Icons:** @tabler/icons-react, lucide-react
-- **Animation:** motion
-- **Linting:** ESLint 9, eslint-config-next
+---
 
-## Directory Structure
+## 🎯 Objective
 
-```
-next-japan/
-├── src/app/           # Main application code (pages, components, features)
-├── public/            # Static assets (images, fonts, CSS, JS)
-├── lib/               # Utility functions
-├── package.json       # Project metadata and scripts
-├── next.config.mjs    # Next.js configuration
-├── postcss.config.mjs # PostCSS configuration
-├── tailwind.config.js # Tailwind CSS configuration (if present)
-└── README.md          # This file
-```
+- Build and deploy a Next.js application using a CI pipeline.
+- Create and configure a Kubernetes cluster using Kind on an AWS EC2 instance.
+- Deploy the application in Kubernetes inside a namespace named `ostad`.
+- Make the application publicly accessible via NodePort.
 
-## Local Development
+---
 
-### Prerequisites
+## Part 1 — CI Pipeline Setup 
+### CI Tool Used
 
-- Node.js v18+ (recommended: LTS)
-- npm v9+ or yarn
+- GitHub Actions
 
-### Install Dependencies
+### CI Pipeline Steps
 
-```sh
-npm install
-# or
-yarn install
-```
+1. **Install Dependencies & Build**  
+  
+   npm install
+   npm run build
 
-### Start Development Server
-
-```sh
-npm run dev
-# or
-yarn dev
-```
-
-- App runs at: [http://localhost:3000](http://localhost:3000)
-
-## Build & Production
-
-### Build for Production
-
-```sh
-npm run build
-# or
-yarn build
-```
-
-- Output: `.next/` directory
-
-### Start Production Server
-
-```sh
-npm start
-# or
-yarn start
-```
-
-## Linting & Code Quality
-
-- Run ESLint:
-
-```sh
+**2. Run Tests & Lint**
+npm test
 npm run lint
-# or
-yarn lint
-```
 
-- ESLint config: `eslint.config.mjs`, `eslint-config-next`
+**3. Build Docker Image**
+docker build -t samiarahmanliza/next-japan:latest .
 
-## Environment Variables
+**4. Push Docker Image to Docker Hub**
+docker push samiarahmanliza/next-japan:latest
 
-- Place environment variables in `.env.local` (not committed).
-- Common variables:
-  - `NEXT_PUBLIC_API_URL` (example)
-  - `NODE_ENV`
+CI Workflow File**
+.github/workflows/ci.yml
 
-## Deployment Notes
 
-- **Static Assets:** Served from `/public`.
-- **App Router:** Uses Next.js App Router (`src/app/`).
-- **SSR/SSG:** Next.js supports both; configure as needed in `next.config.mjs`.
-- **Port:** Defaults to `3000` (can be overridden with `PORT` env var).
-- **Build Artifacts:** `.next/` (do not commit).
-- **Node Version:** Use `.nvmrc` or `engines` in `package.json` for version pinning (add if needed).
 
-## CI/CD Recommendations
+**Part 2 — EC2 Setup & Kubernetes Cluster 
+EC2 Instance Details**
+Instance Type: t2.medium
 
-- **Install:** `npm ci` for clean installs in CI.
-- **Build:** `npm run build` (fail on error).
-- **Lint:** `npm run lint` (fail on error).
-- **Test:** (Add tests as needed; currently not present.)
-- **Artifacts:** Upload `.next/` and `public/` for deployment.
-- **Environment:** Set all required env vars in CI/CD pipeline.
-- **Deployment:** Use Vercel, Netlify, or custom Node.js server. For Docker, add a `Dockerfile` (not present by default).
+OS: Ubuntu 22.04
 
-## Troubleshooting
+Key Pair: your-keypair-name
 
-- **Port in use:** Change `PORT` env var or free port 3000.
-- **Dependency issues:** Delete `node_modules` and `package-lock.json`, then reinstall.
-- **Build errors:** Check Node.js version and environment variables.
+Installed Tools
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y docker.io curl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/
+curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+chmod +x kind
+sudo mv kind /usr/local/bin/
 
----
+**Kind Cluster Creation**
+**Kind Config (kind-config.yaml)**
 
-## Contact
+yaml
 
-For DevOps or deployment issues, contact the project maintainer or DevOps lead.for update and re run 
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ostad-cluster
+nodes:
+- role: control-plane
+  extraPortMappings:
+  - containerPort: 80
+    hostPort: 80
+  - containerPort: 443
+    hostPort: 443
+  - containerPort: 30000
+    hostPort: 30000
+- role: worker
+- role: worker
+
+**Command to create cluster**
+kind create cluster --config kind-config.yaml
+
+**Create Namespace**
+kubectl create namespace ostad
+
+**Verification**
+kubectl get nodes
+
+**Namespace:**
+kubectl get ns
+
+****Part 3 — Kubernetes Deployment ****
+**Deployment (deployment.yaml)**
+yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: next-japan-app
+  namespace: ostad
+  labels:
+    app: next-japan
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: next-japan
+  template:
+    metadata:
+      labels:
+        app: next-japan
+    spec:
+      containers:
+      - name: next-japan
+        image: samiarahmanliza/next-japan:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: PORT
+          value: "3000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+      restartPolicy: Always
+
+**Service (service.yaml)**
+yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: next-japan-service
+  namespace: ostad
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 3000
+    nodePort: 30000
+  selector:
+    app: next-japan
+
+
+**Apply Manifests**
+kubectl apply -f deployment.yaml -n ostad
+kubectl apply -f service.yaml -n ostad
+
+**Verify Deployment**
+kubectl get all -n ostad
+
+**Access Application**
+URL: http://3.145.137.5:30000
+
